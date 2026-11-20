@@ -1,0 +1,22 @@
+name: TC002 X followers
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # 每 5 分钟（GitHub 实际可能延迟几分钟）
+  workflow_dispatch: {}      # 允许手动触发
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Push follower count to TC002
+        env:
+          X_USERNAME: ${{ secrets.X_USERNAME }}
+          MQTT_TOPIC_PREFIX: ${{ secrets.MQTT_TOPIC_PREFIX }}
+          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+        run: python x_followers_mqtt.py --once
