@@ -3,7 +3,7 @@ TC002 X 粉丝数 —— MQTT 版 / X follower counter for Ulanzi TC002 via MQTT
 纯标准库，无需 pip 安装。可在任意联网机器上运行（不需要和时钟同一局域网）。
 
 用法 / Usage:
-    python x_followers_mqtt.py            # 持续运行，每 5 分钟刷新
+    python x_followers_mqtt.py --minutes 340   # 每 60 秒轮询，持续 340 分钟
     python x_followers_mqtt.py --once     # 推送一次后退出（GitHub Actions 用）
 
 环境变量（可选，优先于下面的默认值）/ Env overrides:
@@ -26,7 +26,7 @@ MQTT_HOST = os.environ.get("MQTT_HOST") or "broker.hivemq.com"
 MQTT_PORT = int(os.environ.get("MQTT_PORT") or 1883)
 TOPIC_PREFIX = os.environ.get("MQTT_TOPIC_PREFIX") or ""  # 必填：mqtt_prefix + "_" + MAC 后4位（放在 GitHub Secret）
 APP_NAME = "xfollowers"
-INTERVAL_SEC = 300
+INTERVAL_SEC = int(os.environ.get("POLL_SEC") or 60)   # 轮询间隔（秒）
 FLASH_SEC = 60
 X_BEARER_TOKEN = os.environ.get("X_BEARER_TOKEN", "")
 
@@ -148,10 +148,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--once", action="store_true", help="推送一次后退出")
     ap.add_argument("--switch", action="store_true", help="同时把时钟切到该页面")
+    ap.add_argument("--minutes", type=float, default=0, help="持续轮询的分钟数（0 = 不限）")
     args = ap.parse_args()
+    deadline = time.time() + args.minutes * 60 if args.minutes else None
 
     last, flash_until, flash_color = None, 0.0, COLOR_NORMAL
-    switch = args.switch or not args.once
+    switch = args.switch
     while True:
         try:
             n = get_followers(X_USERNAME)
@@ -168,7 +170,7 @@ def main():
             log(f"本轮失败: {e}")
             if args.once:
                 sys.exit(1)
-        if args.once:
+        if args.once or (deadline and time.time() + INTERVAL_SEC > deadline):
             return
         wait = INTERVAL_SEC
         if flash_until > time.time():
