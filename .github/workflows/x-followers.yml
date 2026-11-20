@@ -1,19 +1,35 @@
 name: TC002 X followers
 
+# 近实时方案：每次运行在一个任务里每 60 秒轮询一次，持续约 5 小时 40 分钟，
+# 结束前自动触发下一轮，形成接力；定时任务只作为断链后的兜底重启。
 on:
   schedule:
-    - cron: "*/5 * * * *"   # 每 5 分钟（GitHub 实际可能延迟几分钟）
-  workflow_dispatch: {}      # 允许手动触发
+    - cron: "7,37 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: tc002-x-followers
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
 
 jobs:
-  push:
+  poll:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v5
-      - name: Push follower count to TC002
+      - name: Poll followers and push to TC002
         env:
           X_USERNAME: ${{ secrets.X_USERNAME }}
           MQTT_TOPIC_PREFIX: ${{ secrets.MQTT_TOPIC_PREFIX }}
           X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
-        run: python3 x_followers_mqtt.py --once
+          POLL_SEC: "60"
+        run: python3 x_followers_mqtt.py --minutes 340
+      - name: Start next round
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run x-followers.yml --repo "$GITHUB_REPOSITORY" --ref main
