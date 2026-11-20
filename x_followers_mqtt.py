@@ -45,20 +45,26 @@ def http_json(url, headers=None, timeout=15):
         return json.loads(r.read().decode("utf-8", "replace"))
 
 
-def get_followers(user):
-    try:
-        d = http_json(f"https://api.fxtwitter.com/{urllib.parse.quote(user)}")
-        return int(d["user"]["followers"])
-    except Exception as e:
-        if not X_BEARER_TOKEN:
-            raise
-        log(f"fxtwitter 失败，改用官方 API: {e}")
-        d = http_json(
-            f"https://api.x.com/2/users/by/username/{urllib.parse.quote(user)}"
-            "?user.fields=public_metrics",
-            headers={"Authorization": f"Bearer {X_BEARER_TOKEN}"},
-        )
-        return int(d["data"]["public_metrics"]["followers_count"])
+def get_followers(user, attempts=4):
+    """fxtwitter 偶发 404，失败后间隔几秒重试。"""
+    last_err = None
+    for i in range(attempts):
+        try:
+            d = http_json(f"https://api.fxtwitter.com/{urllib.parse.quote(user)}")
+            return int(d["user"]["followers"])
+        except Exception as e:
+            last_err = e
+            if i < attempts - 1:
+                time.sleep(4)
+    if not X_BEARER_TOKEN:
+        raise last_err
+    log(f"fxtwitter 失败，改用官方 API: {last_err}")
+    d = http_json(
+        f"https://api.x.com/2/users/by/username/{urllib.parse.quote(user)}"
+        "?user.fields=public_metrics",
+        headers={"Authorization": f"Bearer {X_BEARER_TOKEN}"},
+    )
+    return int(d["data"]["public_metrics"]["followers_count"])
 
 
 # ===== 画面 / Rendering =====
