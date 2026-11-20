@@ -10,13 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+      - uses: actions/checkout@v5
       - name: Push follower count to TC002
         env:
           X_USERNAME: ${{ secrets.X_USERNAME }}
           MQTT_TOPIC_PREFIX: ${{ secrets.MQTT_TOPIC_PREFIX }}
           X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
-        run: python x_followers_mqtt.py --once
+        run: python3 x_followers_mqtt.py --once
