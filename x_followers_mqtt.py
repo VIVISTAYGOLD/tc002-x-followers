@@ -62,32 +62,42 @@ def get_followers(user):
 
 
 # ===== 画面 / Rendering =====
-def x_logo_bitmap(size=10, color=0xFFFFFF):
-    px = [0] * (size * size)
-    for y in range(size):
-        for x in (y, y + 1):
-            if x < size:
-                px[y * size + x] = color
-        px[y * size + (size - 1 - y)] = color
+TILE_COLOR = 0x4A4A4A   # 方案 C：灰底方块（LED 上呈暗白光）
+LOGO_COLOR = 0xFFFFFF
+
+
+def x_logo_tile(size=16, pad=3):
+    """16x16 圆角灰底方块，中间白色 X 标志（10x10）。"""
+    px = [TILE_COLOR] * (size * size)
+    for y, x in ((0, 0), (0, size - 1), (size - 1, 0), (size - 1, size - 1)):
+        px[y * size + x] = 0                       # 圆角
+    n = size - 2 * pad
+    for y in range(n):
+        for x in (y, y + 1, n - 1 - y):           # 粗笔画 + 细笔画
+            if x < n:
+                px[(y + pad) * size + (x + pad)] = LOGO_COLOR
     return px
 
 
 def fmt(n):
+    """数字区宽 34px，最多显示 5 个字符。"""
     if n < 10_000:
-        return str(n)
+        return str(n)                                   # 9876
+    if n < 100_000:
+        return f"{n / 1000:.1f}K".replace(".0K", "K")   # 52.3K
     if n < 1_000_000:
-        return f"{n / 1000:.1f}K".replace(".0K", "K")
-    return f"{n / 1_000_000:.1f}M".replace(".0M", "M")
+        return f"{n // 1000}K"                          # 123K
+    return f"{n / 1_000_000:.1f}M".replace(".0M", "M")  # 1.2M
 
 
 def build_payload(count, color):
     return {
-        "draw": [{"db": [1, 3, 10, 10, x_logo_bitmap()]}],
+        "draw": [{"db": [0, 0, 16, 16, x_logo_tile()]}],
         "text": [{
             "content": fmt(count) if count is not None else "--",
             "fontHeight": 10, "x": -1000, "y": -1000,
             "align": "center", "valign": "middle",
-            "rect": [13, 0, 39, 16], "color": color, "charSpacing": 1,
+            "rect": [18, 0, 34, 16], "color": color, "charSpacing": 1,
         }],
     }
 
